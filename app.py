@@ -62,6 +62,11 @@ def showSignin():
         return render_template('userHome.html')
     else:
         return render_template('signin.html')
+        
+@app.route('/logout')
+def logout():
+    session.pop('user',None)
+    return redirect('/')
     
 @app.route('/userHome')
 def userHome():
