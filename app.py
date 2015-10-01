@@ -21,7 +21,6 @@ def main():
     
 @app.route('/showSignUp')
 def showSignUp():
-    print "hello"
     return render_template('signup.html')
     
 @app.route('/signUp',methods=['POST','GET'])
