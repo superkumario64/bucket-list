@@ -21,6 +21,7 @@ mysql.init_app(app)
 # pagination limit
 pageLimit = 2
 
+#gereral fxn to call a sql stored procedure
 def callProcedure(proc, dataTuple, isSelect):
     try:
         conn = mysql.connect()
@@ -51,7 +52,7 @@ def main():
         return redirect('/showDashboard')
     else:
         return render_template('index.html')
-    
+
 @app.route('/addUpdateLike',methods=['POST'])
 def addUpdateLike():
     if session.get('user'):
@@ -133,6 +134,7 @@ def addWish():
     else:
         return render_template('error.html',error = 'Unauthorized Access')
         
+#getWish but its using a POST HTTP method???
 @app.route('/getWish',methods=['POST'])
 def getWish():
     try:
@@ -171,7 +173,8 @@ def getWish():
             return render_template('error.html', error = 'Unauthorized Access')
     except Exception as e:
         return render_template('error.html', error = str(e))
-        
+
+#getWishById but its using a POST HTTP method???
 @app.route('/getWishById',methods=['POST'])
 def getWishById():
     if session.get('user'):
@@ -186,7 +189,7 @@ def getWishById():
         return json.dumps(wish)
     else:
         return render_template('error.html', error = 'Unauthorized Access')
-        
+ 
 @app.route('/updateWish', methods=['POST'])
 def updateWish():
     if session.get('user'):
