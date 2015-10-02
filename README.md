@@ -2,11 +2,11 @@
 ### I folowed this tutorial: http://code.tutsplus.com/tutorials/creating-a-web-app-from-scratch-using-python-flask-and-mysql--cms-22972
 #### Here are some general thoughts, look at the code to see more specific:
 
-* Pros
+* Likes
   * Flask looks pretty cool
   * I like how python forces sytax format
   * I had fun implementing the web app
-* Cons
+* Dislikes
   * This guys code wasn't too DRY
   * Stored procedures don't scale well, in a site going for production I would:
     * Implement application/business logic first in JS then in Server-side language
