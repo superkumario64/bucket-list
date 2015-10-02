@@ -54,10 +54,10 @@
                         like: 1
                     },
                     success: function(response) {
+                        console.log(response);
                         var obj = JSON.parse(response);
                         console.log(obj);
                         if (obj.likeStatus == "1") {
-                            console.log("bewbs");
                             $('#span_' + spId).html('&nbsp;You & ' + (Number(obj.total) - 1) + ' Others');
                         } else {
                             $('#span_' + spId).html('&nbsp;' + obj.total + ' like(s)');

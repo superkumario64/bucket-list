@@ -21,6 +21,28 @@ mysql.init_app(app)
 # pagination limit
 pageLimit = 2
 
+def callProcedure(proc, dataTuple, isSelect):
+    try:
+        conn = mysql.connect()
+        cursor = conn.cursor()
+        cursor.callproc(proc,dataTuple)
+        data = cursor.fetchall()
+        cursor.nextset()
+        if isSelect:
+            conn.commit()
+            return data;
+        else:
+            if len(data) is 0:
+                conn.commit()
+                return data;
+            else:
+                return render_template('error.html',error = 'An error occurred!')
+    except Exception as e:
+        return render_template('error.html',error = str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
 @app.route("/")
 def main():
     #If user is logged in redirect to dashboard
@@ -32,69 +54,37 @@ def main():
     
 @app.route('/addUpdateLike',methods=['POST'])
 def addUpdateLike():
-    try:
-        if session.get('user'):
-            _wishId = request.form['wish']
-            _like = request.form['like']
-            _user = session.get('user')
-            
- 
-            conn = mysql.connect()
-            cursor = conn.cursor()
-            cursor.callproc('sp_AddUpdateLikes',(_wishId,_user,_like))
-            data = cursor.fetchall()
- 
-            if len(data) is 0:
-                conn.commit()
-                cursor.close()
-                conn.close()
-                conn = mysql.connect()
-                cursor = conn.cursor()
-                cursor.callproc('sp_getLikeStatus',(_wishId,_user))
-                result = cursor.fetchall()
-                return json.dumps({'status':'OK','total':result[0][0],'likeStatus':result[0][1]})
-            else:
-                return render_template('error.html',error = 'An error occurred!')
- 
+    if session.get('user'):
+        _wishId = request.form['wish']
+        _like = request.form['like']
+        _user = session.get('user')
+        data = callProcedure('sp_AddUpdateLikes',(_wishId,_user,_like),False)
+        if len(data) is 0:
+            result = callProcedure('sp_getLikeStatus',(_wishId,_user),True)
+            return json.dumps({'status':'OK','total':result[0][0],'likeStatus':result[0][1]})
         else:
-            return render_template('error.html',error = 'Unauthorized Access')
-    except Exception as e:
-        return render_template('error.html',error = str(e))
-    finally:
-        cursor.close()
-        conn.close()
+            return render_template('error.html',error = 'An error occurred!')
+    else:
+        return render_template('error.html',error = 'Unauthorized Access')
     
 @app.route('/getAllWishes')
 def getAllWishes():
-    try:
-        if session.get('user'):
-             
-            _user = session.get('user')
-            conn = mysql.connect()
-            cursor = conn.cursor()
-            cursor.callproc('sp_GetAllWishes',(_user,))
-            result = cursor.fetchall()
-         
- 
-         
-            wishes_dict = []
-            for wish in result:
-                wish_dict = {
-                    'Id': wish[0],
-                    'Title': wish[1],
-                    'Description': wish[2],
-                    'FilePath': wish[3],
-                    'Like':wish[4],
-                    'HasLiked':wish[5]}
-                wishes_dict.append(wish_dict)       
- 
-            
- 
-            return json.dumps(wishes_dict)
-        else:
-            return render_template('error.html', error = 'Unauthorized Access')
-    except Exception as e:
-        return render_template('error.html',error = str(e))
+    if session.get('user'):
+        _user = session.get('user')
+        result = callProcedure('sp_GetAllWishes',(_user,),True)
+        wishes_dict = []
+        for wish in result:
+            wish_dict = {
+                'Id': wish[0],
+                'Title': wish[1],
+                'Description': wish[2],
+                'FilePath': wish[3],
+                'Like':wish[4],
+                'HasLiked':wish[5]}
+            wishes_dict.append(wish_dict)
+        return json.dumps(wishes_dict)
+    else:
+        return render_template('error.html', error = 'Unauthorized Access')
     
 @app.route('/showDashboard')
 def showDashboard():
@@ -115,44 +105,33 @@ def upload():
     
 @app.route('/addWish',methods=['POST'])
 def addWish():
-    try:
-        if session.get('user'):
-            _title = request.form['inputTitle']
-            _description = request.form['inputDescription']
-            _user = session.get('user')
-            if request.form.get('filePath') is None:
-                _filePath = ''
-            else:
-                _filePath = request.form.get('filePath')
-                 
-            if request.form.get('private') is None:
-                _private = 0
-            else:
-                _private = 1
-                 
-            if request.form.get('done') is None:
-                _done = 0
-            else:
-                _done = 1
-
-            conn = mysql.connect()
-            cursor = conn.cursor()
-            cursor.callproc('sp_addWish',(_title,_description,_user,_filePath,_private,_done))
-            data = cursor.fetchall()
- 
-            if len(data) is 0:
-                conn.commit()
-                return redirect('/userHome')
-            else:
-                return render_template('error.html',error = 'An error occurred!')
- 
+    if session.get('user'):
+        _title = request.form['inputTitle']
+        _description = request.form['inputDescription']
+        _user = session.get('user')
+        if request.form.get('filePath') is None:
+            _filePath = ''
         else:
-            return render_template('error.html',error = 'Unauthorized Access')
-    except Exception as e:
-        return render_template('error.html',error = str(e))
-    finally:
-        cursor.close()
-        conn.close()
+            _filePath = request.form.get('filePath')
+             
+        if request.form.get('private') is None:
+            _private = 0
+        else:
+            _private = 1
+             
+        if request.form.get('done') is None:
+            _done = 0
+        else:
+            _done = 1
+            
+        data = callProcedure('sp_addWish',(_title,_description,_user,_filePath,_private,_done),False)
+        if len(data) is 0:
+            return redirect('/userHome')
+        else:
+            return render_template('error.html',error = 'An error occurred!')
+ 
+    else:
+        return render_template('error.html',error = 'Unauthorized Access')
         
 @app.route('/getWish',methods=['POST'])
 def getWish():
@@ -163,11 +142,13 @@ def getWish():
             _offset = request.form['offset']
             print _offset
             _total_records = 0
-
+            #there is a js/html5 issue that is preventing me from drying this out.
             con = mysql.connect()
             cursor = con.cursor()
             cursor.callproc('sp_GetWishByUser',(_user,_limit,_offset,_total_records))
             wishes = cursor.fetchall()
+            
+            
             cursor.close()
             cursor = con.cursor()
             cursor.execute('SELECT @_sp_GetWishByUser_3');
@@ -193,128 +174,51 @@ def getWish():
         
 @app.route('/getWishById',methods=['POST'])
 def getWishById():
-    try:
-        if session.get('user'):
+    if session.get('user'):
  
-            _id = request.form['id']
-            _user = session.get('user')
+        _id = request.form['id']
+        _user = session.get('user')
+        result = callProcedure('sp_GetWishById',(_id,_user),True)
  
-            conn = mysql.connect()
-            cursor = conn.cursor()
-            cursor.callproc('sp_GetWishById',(_id,_user))
-            result = cursor.fetchall()
+        wish = []
+        wish.append({'Id':result[0][0],'Title':result[0][1],'Description':result[0][2],'FilePath':result[0][3],'Private':result[0][4],'Done':result[0][5]})
  
-            wish = []
-            wish.append({'Id':result[0][0],'Title':result[0][1],'Description':result[0][2],'FilePath':result[0][3],'Private':result[0][4],'Done':result[0][5]})
- 
-            return json.dumps(wish)
-        else:
-            return render_template('error.html', error = 'Unauthorized Access')
-    except Exception as e:
-        return render_template('error.html',error = str(e))
+        return json.dumps(wish)
+    else:
+        return render_template('error.html', error = 'Unauthorized Access')
         
 @app.route('/updateWish', methods=['POST'])
 def updateWish():
-    try:
-        if session.get('user'):
-            _user = session.get('user')
-            _title = request.form['title']
-            _description = request.form['description']
-            _wish_id = request.form['id']
-            _filePath = request.form['filePath']
-            _isPrivate = request.form['isPrivate']
-            _isDone = request.form['isDone']
+    if session.get('user'):
+        _user = session.get('user')
+        _title = request.form['title']
+        _description = request.form['description']
+        _wish_id = request.form['id']
+        _filePath = request.form['filePath']
+        _isPrivate = request.form['isPrivate']
+        _isDone = request.form['isDone']
+
+        data = callProcedure('sp_updateWish',(_title,_description,_wish_id,_user,_filePath,_isPrivate,_isDone),False)
  
- 
- 
-            conn = mysql.connect()
-            cursor = conn.cursor()
-            cursor.callproc('sp_updateWish',(_title,_description,_wish_id,_user,_filePath,_isPrivate,_isDone))
-            data = cursor.fetchall()
- 
-            if len(data) is 0:
-                conn.commit()
-                return json.dumps({'status':'OK'})
-            else:
-                return json.dumps({'status':'ERROR'})
-    except Exception as e:
-        return json.dumps({'status':'Unauthorized access'})
-    finally:
-        cursor.close()
-        conn.close()
+        if len(data) is 0:
+            return json.dumps({'status':'OK'})
+        else:
+            return json.dumps({'status':'ERROR'})
         
 @app.route('/deleteWish',methods=['POST'])
 def deleteWish():
-    try:
-        if session.get('user'):
-            _id = request.form['id']
-            _user = session.get('user')
- 
-            conn = mysql.connect()
-            cursor = conn.cursor()
-            cursor.callproc('sp_deleteWish',(_id,_user))
-            result = cursor.fetchall()
- 
-            if len(result) is 0:
-                conn.commit()
-                return json.dumps({'status':'OK'})
-            else:
-                return json.dumps({'status':'An Error occured'})
-        else:
-            return render_template('error.html',error = 'Unauthorized Access')
-    except Exception as e:
-        return json.dumps({'status':str(e)})
-    finally:
-        cursor.close()
-        conn.close()
-    
-@app.route('/showSignUp')
-def showSignUp():
-    return render_template('signup.html')
-    
-@app.route('/signUp',methods=['POST','GET'])
-def signUp():
-    try:
-        _name = request.form['inputName']
-        _email = request.form['inputEmail']
-        _password = request.form['inputPassword']
-
-        # validate the received values
-        if _name and _email and _password:
-            
-            # All Good, let's call MySQL
-            
-            conn = mysql.connect()
-            cursor = conn.cursor()
-            _hashed_password = generate_password_hash(_password)
-            cursor.callproc('sp_createUser',(_name,_email,_hashed_password))
-            data = cursor.fetchall()
-            if len(data) is 0:
-                conn.commit()
-                return json.dumps({'success':'1'})
-            else:
-                app.logger.warning(data)
-                return json.dumps({'error':str(data[0]),'success':'0'})
-        else:
-            return json.dumps({'html':'<span>Enter the required fields</span>'})
-
-    except Exception as e:
-        return json.dumps({'error':str(e)})
-    finally:
-        cursor.close() 
-        conn.close()
-
-@app.route('/showSignin')
-def showSignin():
     if session.get('user'):
-        return render_template('userHome.html')
+        _id = request.form['id']
+        _user = session.get('user')
+ 
+        result = callProcedure('sp_deleteWish',(_id,_user),False)
+ 
+        if len(result) is 0:
+            return json.dumps({'status':'OK'})
+        else:
+            return json.dumps({'status':'An Error occured'})
     else:
-        return render_template('signin.html')
-        
-@app.route('/logout')
-def logout():
-    session.pop('user',None)
-    return redirect('/')
+        return render_template('error.html',error = 'Unauthorized Access')
     
 @app.route('/userHome')
 def userHome():
@@ -322,34 +226,55 @@ def userHome():
         return render_template('userHome.html')
     else:
         return render_template('error.html',error = 'Unauthorized Access')
+        
+@app.route('/logout')
+def logout():
+    session.pop('user',None)
+    return redirect('/')
+
+@app.route('/showSignin')
+def showSignin():
+    if session.get('user'):
+        return render_template('userHome.html')
+    else:
+        return render_template('signin.html')
 
 @app.route('/validateLogin',methods=['POST'])
 def validateLogin():
-    try:
-        _username = request.form['inputEmail']
-        _password = request.form['inputPassword']
-        
-        # connect to mysql
-        con = mysql.connect()
-        cursor = con.cursor()
-        cursor.callproc('sp_validateLogin',(_username,))
-        data = cursor.fetchall()
-        
-        if len(data) > 0:
-            if check_password_hash(str(data[0][3]),_password):
-                session['user'] = data[0][0]
-                return redirect('/showDashboard')
-            else:
-                return render_template('error.html',error = 'Wrong Email address or Password.')
+    _username = request.form['inputEmail']
+    _password = request.form['inputPassword']
+    
+    data = callProcedure('sp_validateLogin',(_username,),True)
+    
+    if len(data) > 0:
+        if check_password_hash(str(data[0][3]),_password):
+            session['user'] = data[0][0]
+            return redirect('/showDashboard')
         else:
             return render_template('error.html',error = 'Wrong Email address or Password.')
+    else:
+        return render_template('error.html',error = 'Wrong Email address or Password.')\
+        
+@app.route('/showSignUp')
+def showSignUp():
+    return render_template('signup.html')
+    
+@app.route('/signUp',methods=['POST','GET'])
+def signUp():
+    _name = request.form['inputName']
+    _email = request.form['inputEmail']
+    _password = request.form['inputPassword']
 
-    except Exception as e:
-        return render_template('error.html',error = str(e))
-    finally:
-        cursor.close()
-        con.close()
+    # validate the received values
+    if _name and _email and _password:
+        _hashed_password = generate_password_hash(_password)
+        data = callProcedure('sp_createUser',(_name,_email,_hashed_password),False)
+        if len(data) is 0:
+            return json.dumps({'success':'1'})
+        else:
+            return json.dumps({'error':str(data[0]),'success':'0'})
+    else:
+        return json.dumps({'html':'<span>Enter the required fields</span>'})
 
 if __name__ == "__main__":
     app.run(debug = True)
-    
