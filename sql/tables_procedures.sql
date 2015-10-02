@@ -19,6 +19,9 @@
 -- Table structure for table `tbl_likes`
 --
 
+CREATE DATABASE IF NOT EXISTS BucketList;
+USE BucketList;
+
 DROP TABLE IF EXISTS `tbl_likes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
