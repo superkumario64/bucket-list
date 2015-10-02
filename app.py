@@ -23,7 +23,12 @@ pageLimit = 2
 
 @app.route("/")
 def main():
-    return render_template('index.html')
+    #If user is logged in redirect to dashboard
+    #else render index
+    if session.get('user'):
+        return redirect('/showDashboard')
+    else:
+        return render_template('index.html')
     
 @app.route('/addUpdateLike',methods=['POST'])
 def addUpdateLike():
@@ -284,12 +289,12 @@ def signUp():
             _hashed_password = generate_password_hash(_password)
             cursor.callproc('sp_createUser',(_name,_email,_hashed_password))
             data = cursor.fetchall()
-
             if len(data) is 0:
                 conn.commit()
-                return json.dumps({'message':'User created successfully !'})
+                return json.dumps({'success':'1'})
             else:
-                return json.dumps({'error':str(data[0])})
+                app.logger.warning(data)
+                return json.dumps({'error':str(data[0]),'success':'0'})
         else:
             return json.dumps({'html':'<span>Enter the required fields</span>'})
 

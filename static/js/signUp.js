@@ -6,10 +6,12 @@ $(function() {
             data: $('form').serialize(),
             type: 'POST',
             success: function(response) {
-                console.log(response);
+                var data = JSON.parse(response);
+                if (parseInt(data.success)) window.location.href = "/showSignin";
+                else alert(data.error);
             },
             error: function(error) {
-                console.log(error);
+                alert("there was an error: " + error);
             }
         });
     });
